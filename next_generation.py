@@ -45,11 +45,14 @@ raw_corpus = 'Neutron stars, the end-stage remnants of massive stars, are high-e
 
 raw_text2 = 'Neutron stars are remnants of stellar death so dense that they pack more than the mass of the Sun in a sphere the size of a small city. They are composed of nuclear matter produced by some types of supernovae, which occur when massive stars run out of fuel to power nuclear fusion reactions in their core and hence lose all their support against gravitational collapse. The pressure of the collapse is so great that it can be balanced only when the matter in the star is compressed to the point where neutrons and protons in atomic nuclei start pushing against each other. This is known as the neutron degeneracy pressure. Neutron stars are observed in a variety of systems: as isolated objects emitting pulses of light towards us (pulsars) and giant flares  or as binary systems with other stars, white dwarfs or even other neutron stars. All of these systems produce copious hard X-ray emission which tells us details about the masses, radii, magnetic fields and their interaction with their companions.Neutron stars have extremely strong magnetic fields. Some of them, known as magnetars have the strongest magnetic fields in the entire universe, a hundred million times stronger than the strongest man-made magnetic fields. These magnetic poles of these stars emit cones of light in radio, optical, X-ray or gamma-ray wavelengths. Much like a lighthouse, the rotation of the neutron stars periodically sweeps these cones of light in the direction of the Earth, causing us to see a pulsating star, or a pulsar.'
 
-query = 'Neutron stars'
+query = 'white dwarf'
 
 query_to_corpus = {}
 
-stop_words_additional = {'should', 'could', 'again', 'likewise', 'of course', 'like', 'as', 'too', 'would'}
+stop_words_additional = {'should', 'could', 'again', 'likewise', 'of course', 'like', 'as', 'too', 'would', 'around', 'provide',
+                         'whatever', 'even', 'this', 'way'}
+
+topic2vec = None
 
 '''
 
@@ -87,7 +90,7 @@ def sentence_to_wordlist(raw):
 
     words = clean.split()
 
-    filtered_words = list(filter(lambda x: x not in stop_words, words))
+    filtered_words = list(filter(lambda x: x not in stop_words not in stop_words_additional, words))
 
     return filtered_words
 
@@ -141,16 +144,20 @@ def process_query():
 
 def get_model():
 
+    global topic2vec
+
     sentences = preprocessing(raw_corpus)
 
     topic2vec = train_model(sentences)
 
-    save_model(topic2vec)
+    #save_model(topic2vec)
 
-    return topic2vec
+    #return topic2vec
 
 
-def get_next_similarity(query, topic2vec):
+def get_next_similarity(query):
+
+    global topic2vec
 
     filtered_queries = []
 
@@ -158,7 +165,7 @@ def get_next_similarity(query, topic2vec):
         try:
             filtered_queries.append(topic2vec.most_similar(word))
         except KeyError as e:
-            topic2vec = process_invalid_query(query)
+            process_invalid_query(query)
             filtered_queries.append(topic2vec.most_similar(word))
 
     word_to_rating = {}
@@ -171,27 +178,28 @@ def get_next_similarity(query, topic2vec):
 
     ranked_words = sorted(word_to_rating, key=word_to_rating.get, reverse=True)
 
-    return ranked_words[0:4]
+    for word in ranked_words:
+        if len(word) < 3 or word.__contains__('ing'):
+            ranked_words.remove(word)
+
+    return ranked_words
 
 
 def process_invalid_query(word):
 
     global raw_corpus
 
-    new_text_base = article_generator_text(word, 5)
+    new_text_base = article_generator_text(word, 10)
 
     raw_corpus = str_join(raw_corpus, ' ', new_text_base)
 
-    new_model = get_model()
-
-    return new_model
+    get_model()
 
 
 def str_join(*args):
     return ''.join(map(str, args))
 
-print(get_next_similarity(query.split(' '), get_model()))
+get_model()
 
-
-
+print(get_next_similarity(query.split(' ')))
 
