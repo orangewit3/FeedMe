@@ -27,7 +27,7 @@ class NextGen:
     topic2vec = None
 
     stop_words_additional = {'should', 'could', 'again', 'likewise', 'of course', 'like', 'as', 'too', 'would',
-                             'around', 'provide', 'whatever', 'even', 'this', 'way', 'the'}
+                             'around', 'provide', 'whatever', 'even', 'this', 'way', 'the', 'also', 'said', 'n', 'among', 'r', 'ms'}
 
 
     def __init__(self, corpus, user_query):
@@ -52,6 +52,8 @@ class NextGen:
             if len(raw_sentence) > 0 and raw_sentence not in stop_words:
                 sentences.append(self.sentence_to_wordlist(raw_sentence))
 
+        print(sentences)
+
         return sentences
 
 
@@ -65,13 +67,18 @@ class NextGen:
 
         filtered_words = list(filter(lambda x: x.lower() not in stop_words not in self.stop_words_additional, words))
 
-        return filtered_words
+        filtered_words_lowered = []
+
+        for word in filtered_words:
+            filtered_words_lowered.append(word.lower())
+
+        return filtered_words_lowered
 
 
 
     def train_model(self, sentences):
 
-        num_of_features = 200
+        num_of_features = 300
 
         min_word_count = 3
 
@@ -134,7 +141,10 @@ class NextGen:
                 filtered_queries.append(topic2vec.most_similar(word))
             except KeyError as e:
                 self.process_invalid_query(self.query)
-                filtered_queries.append(topic2vec.most_similar(word))
+                try:
+                    filtered_queries.append(topic2vec.most_similar(word))
+                except KeyError as e:
+                    return splitted_query
 
         word_to_rating = {}
 
@@ -159,13 +169,24 @@ class NextGen:
 
         self.raw_corpus = self.str_join(self.raw_corpus, ' ', new_text_base)
 
-        print(self.raw_corpus)
-
         self.get_model()
-
 
     def str_join(*args):
         return ''.join(map(str, args))
+
+    def convert_to_text(self):
+
+        filtered_words = self.process_query()
+
+        sentence_to_print = ''
+
+        for word in filtered_words:
+            sentence_to_print += ' ' + word
+
+        print(sentence_to_print)
+
+        return article_generator_text(sentence_to_print, 1)
+
 
     def check_relevant_words(self):
         global topic2vec
@@ -189,6 +210,7 @@ class NextGen:
         string_output = ""
         for word in relevant_query_list:
             string_output += str(word) + " "
+        print(string_output)
         return article_generator_text(string_output, 1)
 
     def process_generations(self):
